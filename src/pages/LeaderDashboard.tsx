@@ -1,6 +1,4 @@
-﻿
-
-import { useMemo } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { encryptRef } from '../utils/encryption'
 
@@ -16,6 +14,7 @@ type AuthUser = {
 
 function LeaderDashboard() {
   const navigate = useNavigate()
+  const [copied, setCopied] = useState(false)
 
   const user = useMemo(() => {
     const raw = localStorage.getItem('app_user')
@@ -39,6 +38,8 @@ function LeaderDashboard() {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(inviteLink)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1500)
     } catch {
       // ignore
     }
@@ -101,11 +102,16 @@ function LeaderDashboard() {
             <button
               type="button"
               onClick={handleCopy}
-              className="rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 px-6 py-3 text-sm font-bold text-white"
+              className={
+                copied
+                  ? 'rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-lg'
+                  : 'rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 px-6 py-3 text-sm font-bold text-white'
+              }
             >
-              Copy
+              {copied ? 'Copied' : 'Copy'}
             </button>
           </div>
+          {copied && <div className="mt-2 text-xs font-bold text-emerald-600">Copied!</div>}
         </div>
 
         <div className="mt-8">

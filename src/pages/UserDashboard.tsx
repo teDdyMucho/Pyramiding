@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { encryptRef } from '../utils/encryption'
 
@@ -14,10 +14,12 @@ type AuthUser = {
 
 function UserDashboard() {
   const navigate = useNavigate()
+  const [copied, setCopied] = useState(false)
 
   const user = useMemo(() => {
     const raw = localStorage.getItem('app_user')
     if (!raw) return null
+
     try {
       return JSON.parse(raw) as AuthUser
     } catch {
@@ -33,6 +35,8 @@ function UserDashboard() {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(inviteLink)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1500)
     } catch {
       // ignore
     }
@@ -143,14 +147,30 @@ function UserDashboard() {
                 <button
                   type="button"
                   onClick={handleCopy}
-                  className="group/btn rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 px-4 py-2 text-xs font-bold text-white hover:from-purple-600 hover:to-purple-700 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg"
+                  className={
+                    copied
+                      ? 'group/btn rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-4 py-2 text-xs font-bold text-white transition-all duration-300 shadow-lg'
+                      : 'group/btn rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 px-4 py-2 text-xs font-bold text-white hover:from-purple-600 hover:to-purple-700 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg'
+                  }
                 >
-                  <svg className="h-4 w-4 group-hover/btn:scale-110 transition-transform duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                    <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-                  </svg>
+                  {copied ? (
+                    <span className="inline-flex items-center gap-1">
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M20 6L9 17l-5-5" />
+                      </svg>
+                      Copied
+                    </span>
+                  ) : (
+                    <svg className="h-4 w-4 group-hover/btn:scale-110 transition-transform duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                      <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                    </svg>
+                  )}
                 </button>
               </div>
+              {copied && (
+                <div className="self-center text-[10px] font-bold text-emerald-600">Copied!</div>
+              )}
             </div>
           </div>
         </div>

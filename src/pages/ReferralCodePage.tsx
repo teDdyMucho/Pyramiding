@@ -1,8 +1,9 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
 function ReferralCodePage() {
   const location = useLocation()
+  const [copied, setCopied] = useState(false)
 
   const ref = useMemo(() => {
     const params = new URLSearchParams(location.search)
@@ -12,6 +13,8 @@ function ReferralCodePage() {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(ref)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1500)
     } catch {
       // ignore
     }
@@ -20,9 +23,9 @@ function ReferralCodePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-light via-white to-accent/5 flex items-center justify-center px-4">
       <div className="w-full max-w-lg rounded-3xl bg-white/90 border border-white/50 shadow-2xl p-8">
-        <div className="text-2xl font-bold text-dark mb-2">Wait for your referral code</div>
+        <div className="text-2xl font-bold text-dark mb-2">This is your referral code</div>
         <div className="text-sm text-medium mb-6">
-          Copy the code below and keep it safe. You can paste it during registration.
+          Copy the code below and keep it safe.
         </div>
 
         <div className="rounded-2xl border-2 border-accent/20 bg-white/80 p-4">
@@ -36,12 +39,17 @@ function ReferralCodePage() {
             <button
               type="button"
               onClick={handleCopy}
-              className="rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 px-6 py-3 text-sm font-bold text-white"
+              className={
+                copied
+                  ? 'rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-lg'
+                  : 'rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 px-6 py-3 text-sm font-bold text-white'
+              }
               disabled={!ref}
             >
-              Copy
+              {copied ? 'Copied' : 'Copy'}
             </button>
           </div>
+          {copied && <div className="mt-2 text-xs font-bold text-emerald-600">Copied!</div>}
           {!ref && (
             <div className="text-xs text-red-600 font-medium mt-3">No referral code found in the link.</div>
           )}
