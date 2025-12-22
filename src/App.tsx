@@ -10,6 +10,7 @@ import LeaderDashboard from './pages/LeaderDashboard'
 import NetworkView from './pages/NetworkView'
 import PendingApproval from './pages/PendingApproval'
 import AdminApprovalDashboard from './pages/AdminApprovalDashboard'
+import ReferralCodePage from './pages/ReferralCodePage'
 import { supabase } from './lib/supabase'
 
 type ApprovedRole = 'users' | 'leaders' | 'admin'
@@ -173,6 +174,14 @@ function DashboardGate({ requiredRole, children }: { requiredRole?: ApprovedRole
   return children
 }
 
+function RegisterEntry() {
+  const location = useLocation()
+  const params = new URLSearchParams(location.search)
+  const ref = params.get('ref')
+  if (ref) return <ReferralCodePage />
+  return <Register />
+}
+
 function AppLayout() {
   const location = useLocation()
   const hideNavbarRoutes = ['/', '/signin', '/register']
@@ -192,7 +201,7 @@ function AppLayout() {
       <main className="flex-grow">
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/register" element={<Register />} />
+          <Route path="/register" element={<RegisterEntry />} />
           <Route
             path="/signin"
             element={
