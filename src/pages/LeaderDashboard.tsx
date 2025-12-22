@@ -1,6 +1,7 @@
-﻿import { useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { encryptRef } from '../utils/encryption'
+import { supabase } from '../lib/supabase'
 
 type AppRole = 'users' | 'leaders' | 'admin'
 
@@ -15,6 +16,7 @@ type AuthUser = {
 function LeaderDashboard() {
   const navigate = useNavigate()
   const [copied, setCopied] = useState(false)
+  const [referralCode, setReferralCode] = useState<string>('')
 
   const user = useMemo(() => {
     const raw = localStorage.getItem('app_user')
@@ -33,7 +35,28 @@ function LeaderDashboard() {
 
   const baseUrl = (import.meta.env?.VITE_PUBLIC_APP_URL as string | undefined) ?? window.location.origin
   const normalizedBaseUrl = baseUrl.replace(/\/$/, '')
-  const inviteLink = user ? `${normalizedBaseUrl}/register?ref=${encryptRef(user.phone_number)}` : ''
+  const inviteRef = user ? (referralCode || encryptRef(user.phone_number)) : ''
+  const inviteLink = user ? `${normalizedBaseUrl}/register?ref=${inviteRef}` : ''
+
+  useEffect(() => {
+    const fetchReferral = async () => {
+      if (!user?.id) return
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('referral_code')
+          .eq('id', user.id)
+          .maybeSingle()
+        if (error) return
+        const code = (data as any)?.referral_code as string | null | undefined
+        if (code) setReferralCode(code)
+      } catch {
+        // ignore
+      }
+    }
+
+    fetchReferral()
+  }, [user?.id])
 
   const handleCopy = async () => {
     try {

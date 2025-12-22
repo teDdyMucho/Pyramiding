@@ -60,7 +60,7 @@ function ReferralCodePage() {
             Back to home
           </Link>
           <Link
-            to={ref ? `/register?ref=${encodeURIComponent(ref)}&step=register` : '/register'}
+            to="/register"
             className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-dark to-medium px-6 py-3 text-sm font-bold text-light"
           >
             Continue

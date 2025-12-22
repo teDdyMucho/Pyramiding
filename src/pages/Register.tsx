@@ -1,11 +1,12 @@
-﻿import { useEffect, useRef, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+﻿import { useRef, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 function Register() {
   const navigate = useNavigate()
-  const location = useLocation()
   const confirmPasswordRef = useRef<HTMLInputElement | null>(null)
+
+  const webhookUrl = 'https://primary-production-6722.up.railway.app/webhook/invite'
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -22,16 +23,6 @@ function Register() {
   const [passwordMismatch, setPasswordMismatch] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-
-  useEffect(() => {
-    const params = new URLSearchParams(location.search)
-    const ref = params.get('ref') ?? ''
-    if (!ref) return
-    setFormData((prev) => {
-      if (prev.inviteCode) return prev
-      return { ...prev, inviteCode: ref }
-    })
-  }, [location.search])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.name === 'confirmPassword') {
@@ -72,6 +63,45 @@ function Register() {
 
       if (!data) {
         throw new Error('Registration failed. No data returned.')
+      }
+
+      const registeredUserId: string | null =
+        (data as any)?.id ?? (Array.isArray(data) ? ((data as any[])?.[0] as any)?.id ?? null : null)
+
+      let inviterPhoneNumber: string | null = null
+      let inviterUserId: string | null = null
+      if (formData.inviteCode) {
+        try {
+          const { data: inviter, error: inviterError } = await supabase
+            .from('users')
+            .select('id, phone_number')
+            .eq('referral_code', formData.inviteCode)
+            .maybeSingle()
+          if (!inviterError) {
+            inviterPhoneNumber = (inviter as any)?.phone_number ?? null
+            inviterUserId = (inviter as any)?.id ?? null
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      try {
+        await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            phone_number: formData.phoneNumber,
+            user_id: registeredUserId,
+            invite_code: formData.inviteCode || null,
+            inviter_phone_number: inviterPhoneNumber,
+            inviter_user_id: inviterUserId,
+          }),
+        })
+      } catch {
+        // ignore
       }
 
       setSuccessMessage('Account created successfully. You can now sign in.')

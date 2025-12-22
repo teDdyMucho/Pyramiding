@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
 
 type AppRole = 'users' | 'leaders' | 'admin'
 
@@ -16,6 +17,8 @@ type Member = {
   name: string
   phone: string
   connections?: Member[]
+  active?: boolean
+  earnedPoints?: number
 }
 
 function NetworkView() {
@@ -30,33 +33,175 @@ function NetworkView() {
   }, [])
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const [data, setData] = useState<Member[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  const data: Member[] = useMemo(() => {
-    return [
-      {
-        id: 'm1',
-        name: 'Alex Santos',
-        phone: '09XXXXXXXXX',
-        connections: [
-          { id: 'm1a', name: 'Jessa Cruz', phone: '09XXXXXXXXX' },
-          { id: 'm1b', name: 'Mark Dela Rosa', phone: '09XXXXXXXXX' },
-        ],
-      },
-      {
-        id: 'm2',
-        name: 'Kim Reyes',
-        phone: '09XXXXXXXXX',
-        connections: [
-          { id: 'm2a', name: 'Paolo Garcia', phone: '09XXXXXXXXX' },
-        ],
-      },
-      {
-        id: 'm3',
-        name: 'Jamie Lim',
-        phone: '09XXXXXXXXX',
-      },
-    ]
-  }, [])
+  useEffect(() => {
+    const loadNetwork = async () => {
+      if (!user?.id) return
+      setIsLoading(true)
+      setErrorMessage(null)
+
+      try {
+        const toNumber = (v: unknown) => {
+          if (typeof v === 'number') return Number.isFinite(v) ? v : 0
+          if (typeof v === 'string') {
+            const n = Number(v)
+            return Number.isFinite(n) ? n : 0
+          }
+          return 0
+        }
+
+        const extractPoints = (row: any) => {
+          // Best-effort: supports common column names without breaking if schema differs
+          return (
+            toNumber(row?.points) ||
+            toNumber(row?.earned_points) ||
+            toNumber(row?.earnedPoints) ||
+            toNumber(row?.amount) ||
+            toNumber(row?.value) ||
+            0
+          )
+        }
+
+        let currentReferralCode: string | null = null
+        try {
+          const { data: me, error: meError } = await supabase
+            .from('users')
+            .select('referral_code')
+            .eq('id', user.id)
+            .maybeSingle()
+          if (!meError) currentReferralCode = (me as any)?.referral_code ?? null
+        } catch {
+          // ignore
+        }
+
+        const { data: directLedgerByUuid, error: directUuidError } = await supabase
+          .from('points_ledger')
+          .select('*')
+          .eq('inviter_code_uuid', user.id)
+
+        if (directUuidError) throw directUuidError
+
+        let directLedger = directLedgerByUuid ?? []
+
+        // Fallback: some DB rows may still be written using referral code text column `refferal`
+        if (directLedger.length === 0 && currentReferralCode) {
+          const { data: directLedgerByCode, error: directCodeError } = await supabase
+            .from('points_ledger')
+            .select('*')
+            .eq('refferal', currentReferralCode)
+
+          if (directCodeError) throw directCodeError
+          directLedger = directLedgerByCode ?? []
+        }
+
+        const directPointsByPhone = new Map<string, number>()
+        ;(directLedger ?? []).forEach((r: any) => {
+          const referredUserId = (r as any)?.user_code_uuid as string | null | undefined
+          if (!referredUserId) return
+          const prev = directPointsByPhone.get(referredUserId) ?? 0
+          directPointsByPhone.set(referredUserId, prev + extractPoints(r))
+        })
+
+        const directPhones = Array.from(
+          new Set((directLedger ?? []).map((r: any) => (r as any)?.user_code_uuid).filter(Boolean))
+        ) as string[]
+
+        if (directPhones.length === 0) {
+          setData([])
+          return
+        }
+
+        const { data: directUsers, error: directUsersError } = await supabase
+          .from('users')
+          .select('id, first_name, last_name, phone_number, role')
+          .in('id', directPhones)
+
+        if (directUsersError) throw directUsersError
+
+        const { data: secondLedger, error: secondError } = await supabase
+          .from('points_ledger')
+          .select('*')
+          .in('inviter_code_uuid', directPhones)
+
+        if (secondError) throw secondError
+
+        const secondPhones = Array.from(
+          new Set((secondLedger ?? []).map((r: any) => (r as any)?.user_code_uuid).filter(Boolean))
+        ) as string[]
+
+        const secondUsersByPhone = new Map<string, any>()
+        if (secondPhones.length > 0) {
+          const { data: secondUsers, error: secondUsersError } = await supabase
+            .from('users')
+            .select('id, first_name, last_name, phone_number, role')
+            .in('id', secondPhones)
+
+          if (secondUsersError) throw secondUsersError
+          ;(secondUsers ?? []).forEach((u: any) => {
+            if ((u as any)?.id) secondUsersByPhone.set((u as any).id as string, u)
+          })
+        }
+
+        const childrenByInviter = new Map<string, string[]>()
+        ;(secondLedger ?? []).forEach((r: any) => {
+          const inviter = (r as any)?.inviter_code_uuid as string | null | undefined
+          const child = (r as any)?.user_code_uuid as string | null | undefined
+          if (!inviter || !child) return
+          const next = childrenByInviter.get(inviter) ?? []
+          next.push(child)
+          childrenByInviter.set(inviter, next)
+        })
+
+        const members: Member[] = (directUsers ?? []).map((u: any) => {
+          const directUserId = (u as any).id as string
+          const phone = (u as any).phone_number as string
+          const childrenPhones = childrenByInviter.get(directUserId) ?? []
+          const uniqueChildren = Array.from(new Set(childrenPhones))
+          const connections: Member[] = uniqueChildren
+            .map((p) => {
+              const childUser = secondUsersByPhone.get(p)
+              if (!childUser) {
+                return {
+                  id: p,
+                  name: p,
+                  phone: p,
+                  active: false,
+                }
+              }
+              const name = `${(childUser as any).first_name} ${(childUser as any).last_name}`.trim()
+              return {
+                id: (childUser as any).id ?? p,
+                name,
+                phone: (childUser as any).phone_number,
+                active: (childUser as any).role !== 'pending',
+              }
+            })
+            .filter(Boolean)
+
+          const name = `${(u as any).first_name} ${(u as any).last_name}`.trim()
+          return {
+            id: (u as any).id ?? phone,
+            name,
+            phone,
+            connections: connections.length ? connections : undefined,
+            active: (u as any).role !== 'pending',
+            earnedPoints: directPointsByPhone.get(directUserId) ?? 0,
+          }
+        })
+
+        setData(members)
+      } catch (e: any) {
+        setErrorMessage((e?.message ?? 'Failed to load network.') as string)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadNetwork()
+  }, [user?.id])
 
   const toggle = (id: string) => {
     setExpanded(prev => ({ ...prev, [id]: !prev[id] }))
@@ -130,20 +275,34 @@ function NetworkView() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="rounded-2xl border-2 border-blue-200/60 bg-gradient-to-br from-blue-50 to-blue-25 p-4 text-center">
                   <div className="text-sm font-bold text-blue-700 mb-1">Direct Connections</div>
-                  <div className="text-3xl font-bold text-dark">{data.length}</div>
+                  <div className="text-3xl font-bold text-dark">{isLoading ? '...' : data.length}</div>
                 </div>
                 <div className="rounded-2xl border-2 border-green-200/60 bg-gradient-to-br from-green-50 to-green-25 p-4 text-center">
                   <div className="text-sm font-bold text-green-700 mb-1">Total Network</div>
-                  <div className="text-3xl font-bold text-dark">{data.reduce((acc, m) => acc + (m.connections?.length || 0), data.length)}</div>
+                  <div className="text-3xl font-bold text-dark">
+                    {isLoading ? '...' : data.reduce((acc, m) => acc + (m.connections?.length || 0), data.length)}
+                  </div>
                 </div>
                 <div className="rounded-2xl border-2 border-purple-200/60 bg-gradient-to-br from-purple-50 to-purple-25 p-4 text-center">
                   <div className="text-sm font-bold text-purple-700 mb-1">Active Rate</div>
-                  <div className="text-3xl font-bold text-dark">87%</div>
+                  <div className="text-3xl font-bold text-dark">
+                    {isLoading
+                      ? '...'
+                      : data.length
+                        ? `${Math.round((data.filter(m => m.active).length / data.length) * 100)}%`
+                        : '0%'}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
+
+        {errorMessage && (
+          <div className="mb-8 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+            {errorMessage}
+          </div>
+        )}
 
         {/* Enhanced network visualization */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
@@ -151,6 +310,8 @@ function NetworkView() {
             const isOpen = !!expanded[member.id]
             const hasConnections = !!member.connections?.length
             const connectionCount = member.connections?.length || 0
+            const memberActive = member.active !== false
+            const earnedPoints = member.earnedPoints ?? 0
 
             return (
               <div key={member.id} className="group rounded-3xl bg-white/90 backdrop-blur-xl border border-white/50 shadow-2xl overflow-hidden hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-1">
@@ -165,8 +326,10 @@ function NetworkView() {
                         <div className="text-lg font-bold text-dark">{member.name}</div>
                         <div className="text-sm text-medium font-medium">{member.phone}</div>
                         <div className="flex items-center gap-2 mt-1">
-                          <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
-                          <div className="text-xs text-green-600 font-semibold">Active member</div>
+                          <div className={memberActive ? 'h-2 w-2 bg-green-500 rounded-full animate-pulse' : 'h-2 w-2 bg-gray-400 rounded-full'}></div>
+                          <div className={memberActive ? 'text-xs text-green-600 font-semibold' : 'text-xs text-gray-600 font-semibold'}>
+                            {memberActive ? 'Active member' : 'Pending'}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -174,6 +337,8 @@ function NetworkView() {
                     <div className="text-right">
                       <div className="text-sm font-bold text-medium mb-1">Connections</div>
                       <div className="text-2xl font-bold text-dark">{connectionCount}</div>
+                      <div className="mt-2 text-sm font-bold text-medium mb-1">Points</div>
+                      <div className="text-xl font-bold text-dark">{earnedPoints}</div>
                     </div>
                   </div>
                 </div>

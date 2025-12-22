@@ -183,8 +183,7 @@ function RegisterEntry() {
   const location = useLocation()
   const params = new URLSearchParams(location.search)
   const ref = params.get('ref')
-  const step = params.get('step')
-  if (ref && step !== 'register') return <ReferralCodePage />
+  if (ref) return <ReferralCodePage />
   return <Register />
 }
 
