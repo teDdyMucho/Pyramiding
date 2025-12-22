@@ -65,6 +65,11 @@ function RoleSync() {
       const target = roleHome(nextRole)
       const path = location.pathname
 
+      if (path === '/register') {
+        const params = new URLSearchParams(location.search)
+        if (params.get('ref')) return
+      }
+
       if (!isApprovedRole(nextRole)) {
         if (path !== '/pending-approval') navigate('/pending-approval', { replace: true })
         return
@@ -130,7 +135,7 @@ function RoleSync() {
       window.clearInterval(poll)
       supabase.removeChannel(channel)
     }
-  }, [location.pathname, navigate])
+  }, [location.pathname, location.search, navigate])
 
   return null
 }
