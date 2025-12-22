@@ -1,10 +1,9 @@
-﻿import { useEffect, useRef, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+﻿import { useRef, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 function Register() {
   const navigate = useNavigate()
-  const location = useLocation()
   const confirmPasswordRef = useRef<HTMLInputElement | null>(null)
 
   const [formData, setFormData] = useState({
@@ -22,23 +21,6 @@ function Register() {
   const [passwordMismatch, setPasswordMismatch] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-
-  // Capture referral code from URL once and persist silently
-  useEffect(() => {
-    const params = new URLSearchParams(location.search)
-    const ref = params.get('ref')
-    if (ref) {
-      setFormData(prev => ({ ...prev, inviteCode: ref }))
-      try { localStorage.setItem('referral_code', ref) } catch {}
-    } else {
-      try {
-        const stored = localStorage.getItem('referral_code')
-        if (stored) setFormData(prev => ({ ...prev, inviteCode: stored }))
-      } catch {}
-    }
-    // run once on mount or when url changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.search])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.name === 'confirmPassword') {
@@ -260,7 +242,20 @@ function Register() {
               )}
             </div>
 
-            {/* Referral code handled silently via query param/localStorage; no visible input */}
+            <div>
+              <label htmlFor="inviteCode" className="block text-sm font-semibold text-medium mb-2">
+                Invite code (optional)
+              </label>
+              <input
+                id="inviteCode"
+                name="inviteCode"
+                type="text"
+                value={formData.inviteCode}
+                onChange={handleChange}
+                placeholder="Enter invite code if you have one"
+                className="appearance-none block w-full px-4 py-3 border border-accent/30 rounded-xl placeholder-medium/50 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-200 bg-white/50"
+              />
+            </div>
 
             <div>
               <button
