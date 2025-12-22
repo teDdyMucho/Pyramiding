@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { encryptRef } from '../utils/encryption'
 
 type AppRole = 'users' | 'leaders' | 'admin'
 
@@ -26,10 +27,8 @@ function UserDashboard() {
 
   const totalConnections = 12
   const activeMembers = 7
-
-  const publicAppUrl = (import.meta.env.VITE_PUBLIC_APP_URL as string | undefined) ?? window.location.origin
-  const normalizedBaseUrl = publicAppUrl.replace(/\/$/, '')
-  const inviteLink = user ? `${normalizedBaseUrl}/register?ref=${encodeURIComponent(user.phone_number)}` : ''
+  const baseUrl = (import.meta.env?.VITE_PUBLIC_APP_URL) || (typeof window !== 'undefined' ? window.location.origin : '')
+  const inviteLink = user ? `${baseUrl}/register?ref=${encryptRef(user.phone_number)}` : ''
 
   const handleCopy = async () => {
     try {
@@ -197,3 +196,9 @@ function UserDashboard() {
 }
 
 export default UserDashboard
+
+
+
+
+
+

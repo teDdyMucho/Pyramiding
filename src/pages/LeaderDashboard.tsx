@@ -1,5 +1,6 @@
-import { useMemo } from 'react'
+﻿import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { encryptRef } from '../utils/encryption'
 
 type AppRole = 'users' | 'leaders' | 'admin'
 
@@ -31,7 +32,7 @@ function LeaderDashboard() {
 
   const publicAppUrl = (import.meta.env.VITE_PUBLIC_APP_URL as string | undefined) ?? window.location.origin
   const normalizedBaseUrl = publicAppUrl.replace(/\/$/, '')
-  const inviteLink = user ? `${normalizedBaseUrl}/register?ref=${encodeURIComponent(user.phone_number)}` : ''
+  const inviteLink = user ? `\$\{normalizedBaseUrl\}/register?ref=\$\{encryptRef(user.phone_number)\}` : ''
 
   const handleCopy = async () => {
     try {
@@ -184,7 +185,7 @@ function LeaderDashboard() {
                   <div className="text-sm font-bold text-green-700">Weekly</div>
                 </div>
                 <div className="text-2xl font-bold text-dark">+12%</div>
-                <div className="text-xs text-green-600 font-medium mt-1">↗ Trending up</div>
+                <div className="text-xs text-green-600 font-medium mt-1">â†— Trending up</div>
               </div>
               <div className="group rounded-2xl border-2 border-blue-200/60 bg-gradient-to-br from-blue-50 to-blue-25 p-4 hover:shadow-lg transition-all duration-200">
                 <div className="flex items-center gap-2 mb-2">
@@ -192,7 +193,7 @@ function LeaderDashboard() {
                   <div className="text-sm font-bold text-blue-700">Monthly</div>
                 </div>
                 <div className="text-2xl font-bold text-dark">+31%</div>
-                <div className="text-xs text-blue-600 font-medium mt-1">↗ Strong growth</div>
+                <div className="text-xs text-blue-600 font-medium mt-1">â†— Strong growth</div>
               </div>
               <div className="group rounded-2xl border-2 border-purple-200/60 bg-gradient-to-br from-purple-50 to-purple-25 p-4 hover:shadow-lg transition-all duration-200">
                 <div className="flex items-center gap-2 mb-2">
@@ -200,7 +201,7 @@ function LeaderDashboard() {
                   <div className="text-sm font-bold text-purple-700">Quarter</div>
                 </div>
                 <div className="text-2xl font-bold text-dark">+58%</div>
-                <div className="text-xs text-purple-600 font-medium mt-1">↗ Excellent</div>
+                <div className="text-xs text-purple-600 font-medium mt-1">â†— Excellent</div>
               </div>
             </div>
           </div>
@@ -284,3 +285,8 @@ function LeaderDashboard() {
 }
 
 export default LeaderDashboard
+
+
+
+
+
