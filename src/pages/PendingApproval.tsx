@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
@@ -47,7 +47,7 @@ function PendingApproval() {
         minute: '2-digit',
         hour12: true,
       })
-    : '—'
+    : 'â€”'
 
   const refreshStatus = async ({ silent }: { silent?: boolean } = {}) => {
     if (!storedUser) return
@@ -105,7 +105,7 @@ function PendingApproval() {
           table: 'users',
           filter: `id=eq.${storedUser.id}`,
         },
-        payload => {
+        (payload: any) => {
           if (!isMounted) return
           const nextRole = (payload.new as any)?.role as string | undefined
           if (nextRole && isApprovedRole(nextRole)) {
@@ -281,3 +281,5 @@ function PendingApproval() {
 }
 
 export default PendingApproval
+
+

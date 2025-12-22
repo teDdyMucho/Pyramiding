@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+﻿import { useEffect } from 'react'
 import { BrowserRouter as Router, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
@@ -112,7 +112,7 @@ function RoleSync() {
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'users', filter: `id=eq.${initial.id}` },
-        payload => {
+        (payload: any) => {
           if (!isMounted) return
           const nextRole = (payload.new as any)?.role as string | undefined
           if (nextRole) applyRole(nextRole)
@@ -286,3 +286,5 @@ function App() {
 }
 
 export default App
+
+
