@@ -1,9 +1,10 @@
-﻿import { useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+﻿import { useEffect, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 function Register() {
   const navigate = useNavigate()
+  const location = useLocation()
   const confirmPasswordRef = useRef<HTMLInputElement | null>(null)
 
   const [formData, setFormData] = useState({
@@ -21,6 +22,17 @@ function Register() {
   const [passwordMismatch, setPasswordMismatch] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const ref = params.get('ref')
+    if (!ref) return
+
+    setFormData((prev) => {
+      if (prev.inviteCode?.trim()) return prev
+      return { ...prev, inviteCode: ref }
+    })
+  }, [location.search])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.name === 'confirmPassword') {
