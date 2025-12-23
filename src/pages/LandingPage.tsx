@@ -18,7 +18,7 @@ function LandingPage() {
                 Enterprise Business Solutions
               </div>
               <h1 className="text-6xl md:text-8xl font-bold mb-8 leading-tight">
-                Own Corp
+                Own Property
                 <span className="block text-accent text-3xl md:text-4xl font-light mt-4 tracking-wide">
                   Business Management Platform
                 </span>
