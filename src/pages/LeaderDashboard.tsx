@@ -109,11 +109,6 @@ function LeaderDashboard() {
         }
 
         const rows = (data ?? []) as any[]
-        if (rows.length === 0) {
-          setGoalCountsError(
-            `No points_ledger rows returned for this account. Tried refferal=${referralCode || '(none)'} then inviter_code_uuid=${user.id}. If rows exist in Supabase but UI shows 0, RLS is likely blocking reads for the anon key.`
-          )
-        }
         const sums = rows.reduce(
           (acc, r) => {
             acc.level1 += Number(r?.goal1 ?? 0)
