@@ -18,7 +18,8 @@ function UserDashboard() {
   const [copied, setCopied] = useState(false)
   const [referralCode, setReferralCode] = useState<string>('')
   const goalTargets = { level1: 10, level2: 100, level3: 1000 }
-  const [referralCount, setReferralCount] = useState(0)
+  const [goalCounts, setGoalCounts] = useState({ level1: 0, level2: 0, level3: 0 })
+  const [goalCountsError, setGoalCountsError] = useState<string | null>(null)
 
   const user = useMemo(() => {
     const raw = localStorage.getItem('app_user')
@@ -33,7 +34,7 @@ function UserDashboard() {
 
   const totalConnections = 12
   const activeMembers = 7
-  const baseUrl = (import.meta.env?.VITE_PUBLIC_APP_URL) || (typeof window !== 'undefined' ? window.location.origin : '')
+  const baseUrl = (typeof window !== 'undefined' ? window.location.origin : (import.meta.env?.VITE_PUBLIC_APP_URL as string | undefined) || '')
   const normalizedBaseUrl = baseUrl.replace(/\/$/, '')
   const inviteRef = user ? (referralCode || encryptRef(user.phone_number)) : ''
   const inviteLink = user ? `${normalizedBaseUrl}/register?ref=${inviteRef}` : ''
@@ -59,45 +60,82 @@ function UserDashboard() {
   }, [user?.id])
 
   useEffect(() => {
-    const fetchReferralCount = async () => {
-      if (!referralCode) return
+    const fetchGoalCounts = async () => {
+      if (!user?.id) return
 
       try {
-        // Primary: count APPROVED accounts that used your referral code at registration
-        const { count: usersCount, error: usersCountError } = await supabase
-          .from('users')
-          .select('id', { count: 'exact', head: true })
-          .eq('invite_code', referralCode)
-          .in('role', ['users', 'leaders'])
+        setGoalCountsError(null)
 
-        if (!usersCountError) {
-          setReferralCount(usersCount ?? 0)
+        const baseQ = supabase
+          .from('points_ledger')
+          .select('goal1, goal2, goal3')
+
+        // Prefer linking by referral code text (refferal) when available.
+        // If it returns no rows (or your ledger uses UUID linking), fallback to inviter_code_uuid.
+        let data: any[] | null = null
+        let error: any = null
+
+        if (referralCode) {
+          const byCode = await (supabase
+            .from('points_ledger')
+            .select('goal1, goal2, goal3')
+            // NOTE: DB column is spelled refferal in your schema.
+            .eq('refferal', referralCode))
+
+          data = (byCode as any).data
+          error = (byCode as any).error
+
+          if (!error && Array.isArray(data) && data.length === 0) {
+            const byUuid = await baseQ.eq('inviter_code_uuid', user.id)
+            data = (byUuid as any).data
+            error = (byUuid as any).error
+          }
+        } else {
+          const byUuid = await baseQ.eq('inviter_code_uuid', user.id)
+          data = (byUuid as any).data
+          error = (byUuid as any).error
+        }
+
+        if (error) {
+          const msg = (error.message ?? '').toLowerCase()
+          if (msg.includes('column') && msg.includes('goal1') && msg.includes('does not exist')) {
+            setGoalCountsError('Your points_ledger table has no goal1/goal2/goal3 columns yet. Add these columns in Supabase first.')
+          } else {
+            setGoalCountsError(error.message)
+          }
           return
         }
-      } catch {
-        // ignore
-      }
 
-      try {
-        // Fallback: count ledger rows with your referral code saved in `refferal`
-        const { count: ledgerCount, error: ledgerCountError } = await supabase
-          .from('points_ledger')
-          .select('id', { count: 'exact', head: true })
-          .eq('refferal', referralCode)
-          .not('user_code_uuid', 'is', null)
-
-        if (!ledgerCountError) setReferralCount(ledgerCount ?? 0)
+        const rows = (data ?? []) as any[]
+        if (rows.length === 0) {
+          setGoalCountsError(
+            `No points_ledger rows returned for this account. Tried refferal=${referralCode || '(none)'} then inviter_code_uuid=${user.id}. If rows exist in Supabase but UI shows 0, RLS is likely blocking reads for the anon key.`
+          )
+        }
+        const sums = rows.reduce(
+          (acc, r) => {
+            acc.level1 += Number(r?.goal1 ?? 0)
+            acc.level2 += Number(r?.goal2 ?? 0)
+            acc.level3 += Number(r?.goal3 ?? 0)
+            return acc
+          },
+          { level1: 0, level2: 0, level3: 0 }
+        )
+        setGoalCounts(sums)
       } catch {
-        // ignore
+        setGoalCountsError('Unable to load goal counts.')
       }
     }
 
-    fetchReferralCount()
-  }, [referralCode])
+    fetchGoalCounts()
+  }, [user?.id, referralCode])
 
-  const pct = (target: number) => {
-    if (!target) return 0
-    return Math.max(0, Math.min(100, Math.round((referralCount / target) * 100)))
+  const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n))
+
+  const progressForTarget = (currentRaw: number, target: number) => {
+    const current = clamp(Math.max(0, currentRaw), 0, target)
+    const percent = target ? Math.max(0, Math.min(100, Math.round((current / target) * 100))) : 0
+    return { current, target, percent }
   }
 
   const handleCopy = async () => {
@@ -258,6 +296,12 @@ function UserDashboard() {
             </div>
           </div>
 
+          {goalCountsError && (
+            <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-700">
+              {goalCountsError}
+            </div>
+          )}
+
           <div className="space-y-4">
             <div className="mx-auto w-full max-w-2xl rounded-2xl border-2 border-green-200/60 bg-gradient-to-r from-green-50 to-white p-5 shadow-sm">
               <div className="flex items-start justify-between gap-4">
@@ -275,12 +319,12 @@ function UserDashboard() {
                 </div>
                 <div className="text-right">
                   <div className="text-xs font-bold text-medium">Progress</div>
-                  <div className="text-lg font-bold text-dark">{pct(goalTargets.level1)}%</div>
-                  <div className="text-xs font-semibold text-medium mt-1">{referralCount} / {goalTargets.level1}</div>
+                  <div className="text-lg font-bold text-dark">{progressForTarget(goalCounts.level1, goalTargets.level1).percent}%</div>
+                  <div className="text-xs font-semibold text-medium mt-1">{progressForTarget(goalCounts.level1, goalTargets.level1).current} / {goalTargets.level1}</div>
                 </div>
               </div>
               <div className="mt-4 h-2 rounded-full bg-green-100 overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-green-500 to-green-600 rounded-full" style={{ width: `${pct(goalTargets.level1)}%` }}></div>
+                <div className="h-full bg-gradient-to-r from-green-500 to-green-600 rounded-full" style={{ width: `${progressForTarget(goalCounts.level1, goalTargets.level1).percent}%` }}></div>
               </div>
             </div>
 
@@ -300,12 +344,12 @@ function UserDashboard() {
                 </div>
                 <div className="text-right">
                   <div className="text-xs font-bold text-medium">Progress</div>
-                  <div className="text-lg font-bold text-dark">{pct(goalTargets.level2)}%</div>
-                  <div className="text-xs font-semibold text-medium mt-1">{referralCount} / {goalTargets.level2}</div>
+                  <div className="text-lg font-bold text-dark">{progressForTarget(goalCounts.level2, goalTargets.level2).percent}%</div>
+                  <div className="text-xs font-semibold text-medium mt-1">{progressForTarget(goalCounts.level2, goalTargets.level2).current} / {goalTargets.level2}</div>
                 </div>
               </div>
               <div className="mt-4 h-2 rounded-full bg-blue-100 overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full" style={{ width: `${pct(goalTargets.level2)}%` }}></div>
+                <div className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full" style={{ width: `${progressForTarget(goalCounts.level2, goalTargets.level2).percent}%` }}></div>
               </div>
             </div>
 
@@ -325,12 +369,12 @@ function UserDashboard() {
                 </div>
                 <div className="text-right">
                   <div className="text-xs font-bold text-medium">Progress</div>
-                  <div className="text-lg font-bold text-dark">{pct(goalTargets.level3)}%</div>
-                  <div className="text-xs font-semibold text-medium mt-1">{referralCount} / {goalTargets.level3}</div>
+                  <div className="text-lg font-bold text-dark">{progressForTarget(goalCounts.level3, goalTargets.level3).percent}%</div>
+                  <div className="text-xs font-semibold text-medium mt-1">{progressForTarget(goalCounts.level3, goalTargets.level3).current} / {goalTargets.level3}</div>
                 </div>
               </div>
               <div className="mt-4 h-2 rounded-full bg-purple-100 overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-purple-500 to-purple-600 rounded-full" style={{ width: `${pct(goalTargets.level3)}%` }}></div>
+                <div className="h-full bg-gradient-to-r from-purple-500 to-purple-600 rounded-full" style={{ width: `${progressForTarget(goalCounts.level3, goalTargets.level3).percent}%` }}></div>
               </div>
             </div>
           </div>
