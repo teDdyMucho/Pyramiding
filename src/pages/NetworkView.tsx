@@ -44,6 +44,7 @@ function NetworkView() {
   const [data, setData] = useState<Member[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     const loadNetwork = async () => {
@@ -219,6 +220,28 @@ function NetworkView() {
     setExpanded(prev => ({ ...prev, [id]: !prev[id] }))
   }
 
+  const filteredData = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return data
+
+    const match = (m: Member) => {
+      return (
+        (m.name ?? '').toLowerCase().includes(q) ||
+        (m.phone ?? '').toLowerCase().includes(q) ||
+        maskPhone(m.phone ?? '').toLowerCase().includes(q)
+      )
+    }
+
+    return data
+      .map((m) => {
+        const matchesSelf = match(m)
+        const connections = (m.connections ?? []).filter(match)
+        if (!matchesSelf && connections.length === 0) return null
+        return { ...m, connections: connections.length ? connections : undefined }
+      })
+      .filter(Boolean) as Member[]
+  }, [data, search])
+
   if (!user) return null
 
   const dashboardPath = user.role === 'leaders' ? '/dashboard/leader' : user.role === 'users' ? '/dashboard/user' : '/dashboard/admin'
@@ -280,7 +303,7 @@ function NetworkView() {
                   <div className="text-2xl font-bold text-dark">
                     {user.first_name} {user.last_name}
                   </div>
-                  <div className="text-sm text-medium font-medium mt-1">{user.phone_number}</div>
+                  <div className="text-sm text-medium font-medium mt-1">{maskPhone(user.phone_number)}</div>
                 </div>
               </div>
               
@@ -310,6 +333,35 @@ function NetworkView() {
           </div>
         </div>
 
+        <div className="mb-8">
+          <div className="rounded-3xl bg-white/80 backdrop-blur-xl border border-white/50 shadow-xl p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex items-center gap-2 text-sm font-bold text-dark">
+                <svg className="h-4 w-4 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M21 21l-4.3-4.3" />
+                </svg>
+                Search
+              </div>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search name or phone (09xxxxxxxxx)"
+                className="flex-1 rounded-2xl border-2 border-accent/20 bg-white/70 px-4 py-3 text-sm font-semibold text-dark placeholder-medium/60 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent/40"
+              />
+              {search.trim() && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="rounded-2xl border-2 border-accent/20 bg-white/70 px-4 py-3 text-sm font-bold text-dark hover:bg-accent/5 hover:border-accent/40 transition-all"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
         {errorMessage && (
           <div className="mb-8 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
             {errorMessage}
@@ -318,7 +370,7 @@ function NetworkView() {
 
         {/* Enhanced network visualization */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
-          {data.map((member) => {
+          {filteredData.map((member) => {
             const isOpen = !!expanded[member.id]
             const hasConnections = !!member.connections?.length
             const connectionCount = member.connections?.length || 0
