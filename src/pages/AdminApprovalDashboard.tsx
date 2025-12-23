@@ -20,6 +20,8 @@ type AssignableRole = 'users' | 'leaders'
 function AdminApprovalDashboard() {
   const navigate = useNavigate()
 
+  const webhookUrl = 'https://primary-production-6722.up.railway.app/webhook/invite'
+
   const [rows, setRows] = useState<UserRow[]>([])
   const [filter, setFilter] = useState<Filter>('pending')
   const [search, setSearch] = useState('')
@@ -88,6 +90,58 @@ function AdminApprovalDashboard() {
   const approve = async (userId: string, role: AssignableRole) => {
     const { error } = await supabase.from('users').update({ role }).eq('id', userId)
     if (error) throw error
+
+    // Send webhook only when the account is approved to users/leaders
+    if (role === 'users' || role === 'leaders') {
+      try {
+        const { data: approvedUser, error: approvedUserError } = await supabase
+          .from('users')
+          .select('id, first_name, last_name, phone_number, invite_code')
+          .eq('id', userId)
+          .maybeSingle()
+
+        if (!approvedUserError && approvedUser) {
+          const inviteCode = (approvedUser as any)?.invite_code as string | null | undefined
+
+          let inviterPhoneNumber: string | null = null
+          let inviterUserId: string | null = null
+
+          if (inviteCode) {
+            try {
+              const { data: inviter, error: inviterError } = await supabase
+                .from('users')
+                .select('id, phone_number')
+                .eq('referral_code', inviteCode)
+                .maybeSingle()
+              if (!inviterError) {
+                inviterPhoneNumber = (inviter as any)?.phone_number ?? null
+                inviterUserId = (inviter as any)?.id ?? null
+              }
+            } catch {
+              // ignore
+            }
+          }
+
+          await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              first_name: (approvedUser as any)?.first_name,
+              last_name: (approvedUser as any)?.last_name,
+              phone_number: (approvedUser as any)?.phone_number,
+              user_id: (approvedUser as any)?.id,
+              invite_code: inviteCode ?? null,
+              inviter_phone_number: inviterPhoneNumber,
+              inviter_user_id: inviterUserId,
+              approved_role: role,
+            }),
+          })
+        }
+      } catch {
+        // ignore
+      }
+    }
+
     await fetchRows()
   }
 

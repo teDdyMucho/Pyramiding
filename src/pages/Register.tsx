@@ -6,8 +6,6 @@ function Register() {
   const navigate = useNavigate()
   const confirmPasswordRef = useRef<HTMLInputElement | null>(null)
 
-  const webhookUrl = 'https://primary-production-6722.up.railway.app/webhook/invite'
-
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -41,6 +39,11 @@ function Register() {
     setErrorMessage(null)
     setSuccessMessage(null)
 
+    if (!formData.inviteCode.trim()) {
+      setErrorMessage('Invite code is required.')
+      return
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setPasswordMismatch(true)
       confirmPasswordRef.current?.setCustomValidity('Passwords do not match')
@@ -63,45 +66,6 @@ function Register() {
 
       if (!data) {
         throw new Error('Registration failed. No data returned.')
-      }
-
-      const registeredUserId: string | null =
-        (data as any)?.id ?? (Array.isArray(data) ? ((data as any[])?.[0] as any)?.id ?? null : null)
-
-      let inviterPhoneNumber: string | null = null
-      let inviterUserId: string | null = null
-      if (formData.inviteCode) {
-        try {
-          const { data: inviter, error: inviterError } = await supabase
-            .from('users')
-            .select('id, phone_number')
-            .eq('referral_code', formData.inviteCode)
-            .maybeSingle()
-          if (!inviterError) {
-            inviterPhoneNumber = (inviter as any)?.phone_number ?? null
-            inviterUserId = (inviter as any)?.id ?? null
-          }
-        } catch {
-          // ignore
-        }
-      }
-
-      try {
-        await fetch(webhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            phone_number: formData.phoneNumber,
-            user_id: registeredUserId,
-            invite_code: formData.inviteCode || null,
-            inviter_phone_number: inviterPhoneNumber,
-            inviter_user_id: inviterUserId,
-          }),
-        })
-      } catch {
-        // ignore
       }
 
       setSuccessMessage('Account created successfully. You can now sign in.')
@@ -285,15 +249,16 @@ function Register() {
 
             <div>
               <label htmlFor="inviteCode" className="block text-sm font-semibold text-medium mb-2">
-                Invite code (optional)
+                Invite code
               </label>
               <input
                 id="inviteCode"
                 name="inviteCode"
                 type="text"
+                required
                 value={formData.inviteCode}
                 onChange={handleChange}
-                placeholder="Enter invite code if you have one"
+                placeholder="Enter invite code"
                 className="appearance-none block w-full px-4 py-3 border border-accent/30 rounded-xl placeholder-medium/50 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-200 bg-white/50"
               />
             </div>
