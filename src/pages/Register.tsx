@@ -54,6 +54,20 @@ function Register() {
 
     setIsSubmitting(true)
     try {
+      // Enforce max 10 uses per invite code (best-effort client-side; server must also enforce)
+      const invite = formData.inviteCode.trim()
+      if (invite) {
+        const { count, error: countError } = await supabase
+          .from('users')
+          .select('id', { count: 'exact', head: true })
+          .eq('invite_code', invite)
+
+        if (!countError && (count ?? 0) >= 10) {
+          setErrorMessage('Invite code has reached the maximum of 10 registrations.')
+          return
+        }
+      }
+
       const { data, error } = await supabase.rpc('register_user', {
         p_first_name: formData.firstName,
         p_last_name: formData.lastName,
@@ -73,6 +87,11 @@ function Register() {
     } catch (err: any) {
       const code = err?.code as string | undefined
       const message = (err?.message ?? 'Registration failed.') as string
+
+      if (/maximum of 10 registrations/i.test(message) || /limit/i.test(message)) {
+        setErrorMessage('Invite code has reached the maximum of 10 registrations.')
+        return
+      }
 
       if (code === '23505' || /duplicate/i.test(message)) {
         setErrorMessage('Invalid register: this phone number is already registered with the same name.')
