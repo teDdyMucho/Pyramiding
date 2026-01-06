@@ -1,9 +1,7 @@
 ﻿import { useEffect, useRef, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { Link, useLocation } from 'react-router-dom'
 
 function Register() {
-  const navigate = useNavigate()
   const location = useLocation()
   const confirmPasswordRef = useRef<HTMLInputElement | null>(null)
 
@@ -17,11 +15,13 @@ function Register() {
   })
 
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [passwordMismatch, setPasswordMismatch] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [showErrorModal, setShowErrorModal] = useState(false)
+  const [errorModalMessage, setErrorModalMessage] = useState('')
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [successModalMessage, setSuccessModalMessage] = useState('')
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -48,11 +48,26 @@ function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setErrorMessage(null)
-    setSuccessMessage(null)
+    console.log('Form submitted', formData)
 
-    if (!formData.inviteCode.trim()) {
-      setErrorMessage('Invite code is required.')
+    // Validate phone number - must be at least 11 digits
+    const phoneDigits = formData.phoneNumber.replace(/\D/g, '')
+    if (phoneDigits.length < 11) {
+      setErrorModalMessage('Phone number must be at least 11 digits.')
+      setShowErrorModal(true)
+      return
+    }
+
+    // Validate password - must be at least 8 characters and contain at least one number
+    if (formData.password.length < 8) {
+      setErrorModalMessage('Password must be at least 8 characters long.')
+      setShowErrorModal(true)
+      return
+    }
+
+    if (!/\d/.test(formData.password)) {
+      setErrorModalMessage('Password must contain at least one number.')
+      setShowErrorModal(true)
       return
     }
 
@@ -60,63 +75,100 @@ function Register() {
       setPasswordMismatch(true)
       confirmPasswordRef.current?.setCustomValidity('Passwords do not match')
       confirmPasswordRef.current?.reportValidity()
-      setErrorMessage('Passwords do not match.')
       return
     }
 
     setIsSubmitting(true)
+    console.log('Sending webhook request...')
     try {
-      // Enforce max 10 uses per invite code (best-effort client-side; server must also enforce)
-      const invite = formData.inviteCode.trim()
-      if (invite) {
-        const { count, error: countError } = await supabase
-          .from('users')
-          .select('id', { count: 'exact', head: true })
-          .eq('invite_code', invite)
-
-        if (!countError && (count ?? 0) >= 10) {
-          setErrorMessage('Invite code has reached the maximum of 10 registrations.')
-          return
-        }
-      }
-
-      const { data, error } = await supabase.rpc('register_user', {
-        p_first_name: formData.firstName,
-        p_last_name: formData.lastName,
-        p_phone_number: formData.phoneNumber,
-        p_password: formData.password,
-        p_invite_code: formData.inviteCode || null,
+      const response = await fetch('https://primary-production-6722.up.railway.app/webhook/894b45ce-f8cc-4af4-8fa4-74ba472b08f4', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phoneNumber: formData.phoneNumber,
+          password: formData.password,
+          inviteCode: formData.inviteCode,
+        }),
       })
 
-      if (error) throw error
-
-      if (!data) {
-        throw new Error('Registration failed. No data returned.')
-      }
-
-      setSuccessMessage('Account created successfully. You can now sign in.')
-      setTimeout(() => navigate('/login'), 800)
-    } catch (err: any) {
-      const code = err?.code as string | undefined
-      const message = (err?.message ?? 'Registration failed.') as string
-
-      if (/maximum of 10 registrations/i.test(message) || /limit/i.test(message)) {
-        setErrorMessage('Invite code has reached the maximum of 10 registrations.')
-        return
-      }
-
-      if (code === '23505' || /duplicate/i.test(message)) {
-        setErrorMessage('Invalid register: this phone number is already registered with the same name.')
+      console.log('Response received:', response.status)
+      const data = await response.json()
+      console.log('Response data:', data)
+      
+      if (data.status === 'fail' && data.msg) {
+        setErrorModalMessage(data.msg)
+        setShowErrorModal(true)
+      } else if (data.status === 'success' && data.msg) {
+        setSuccessModalMessage(data.msg)
+        setShowSuccessModal(true)
       } else {
-        setErrorMessage(message)
+        console.log('Registration completed with unknown status')
       }
+    } catch (err) {
+      console.error('Error during webhook call:', err)
+      setErrorModalMessage('An error occurred. Please try again.')
+      setShowErrorModal(true)
     } finally {
       setIsSubmitting(false)
+      console.log('Form submission complete')
     }
   }
 
   return (
     <div className="min-h-screen bg-light flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      {/* Error Modal */}
+      {showErrorModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full mx-4 border border-red-200">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+                <svg className="h-6 w-6 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-dark">Registration Error</h3>
+            </div>
+            <p className="text-medium mb-6 text-base">{errorModalMessage}</p>
+            <button
+              onClick={() => setShowErrorModal(false)}
+              className="w-full rounded-2xl bg-gradient-to-r from-red-500 to-red-600 px-6 py-3 text-base font-bold text-white hover:from-red-600 hover:to-red-700 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full mx-4 border border-green-200">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
+                <svg className="h-6 w-6 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                  <polyline points="22 4 12 14.01 9 11.01" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-dark">Registration Successful</h3>
+            </div>
+            <p className="text-medium mb-6 text-base">{successModalMessage}</p>
+            <Link
+              to="/"
+              className="block w-full text-center rounded-2xl bg-gradient-to-r from-green-500 to-green-600 px-6 py-3 text-base font-bold text-white hover:from-green-600 hover:to-green-700 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg"
+            >
+              Go to Homepage
+            </Link>
+          </div>
+        </div>
+      )}
+
       <div className="fixed top-6 left-6 z-50">
         <Link
           to="/"
@@ -138,16 +190,6 @@ function Register() {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-lg">
         <div className="bg-white/80 backdrop-blur-sm py-12 px-8 shadow-2xl rounded-3xl border border-accent/20">
           <form className="space-y-8" onSubmit={handleSubmit}>
-            {errorMessage && (
-              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
-                {errorMessage}
-              </div>
-            )}
-            {successMessage && (
-              <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700">
-                {successMessage}
-              </div>
-            )}
             <div className="grid grid-cols-2 gap-6">
               <div>
                 <label htmlFor="firstName" className="block text-sm font-semibold text-medium mb-2">
@@ -192,6 +234,7 @@ function Register() {
                 required
                 value={formData.phoneNumber}
                 onChange={handleChange}
+                placeholder="Min 11 digits"
                 className="appearance-none block w-full px-4 py-3 border border-accent/30 rounded-xl placeholder-medium/50 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-200 bg-white/50"
               />
             </div>
@@ -209,6 +252,8 @@ function Register() {
                   required
                   value={formData.password}
                   onChange={handleChange}
+                  placeholder="Min 8 characters with number"
+                  minLength={8}
                   className="appearance-none block w-full px-4 py-3 pr-12 border border-accent/30 rounded-xl placeholder-medium/50 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-200 bg-white/50"
                 />
                 <button

@@ -463,59 +463,6 @@ function NetworkView() {
           })}
         </div>
 
-        {/* Enhanced insights section */}
-        <div className="rounded-3xl bg-white/90 backdrop-blur-xl border border-white/50 shadow-2xl p-8">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-purple-100 to-purple-50 flex items-center justify-center shadow-lg">
-              <svg className="h-6 w-6 text-purple-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M3 3v18h18" />
-                <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3" />
-              </svg>
-            </div>
-            <div>
-              <div className="text-xl font-bold text-dark">Network Insights</div>
-              <div className="text-sm text-medium font-medium">Performance and growth analytics</div>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="rounded-2xl border-2 border-green-200/60 bg-gradient-to-br from-green-50 to-green-25 p-6">
-              <div className="flex items-center gap-3 mb-3">
-                <svg className="h-6 w-6 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M3 3v18h18" />
-                  <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3" />
-                </svg>
-                <div className="text-sm font-bold text-green-700">Growth Rate</div>
-              </div>
-              <div className="text-3xl font-bold text-dark mb-2">+24%</div>
-              <div className="text-xs text-green-600 font-medium">↗ Network expanding steadily</div>
-            </div>
-            
-            <div className="rounded-2xl border-2 border-blue-200/60 bg-gradient-to-br from-blue-50 to-blue-25 p-6">
-              <div className="flex items-center gap-3 mb-3">
-                <svg className="h-6 w-6 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
-                  <path d="M12 17h.01" />
-                </svg>
-                <div className="text-sm font-bold text-blue-700">Engagement</div>
-              </div>
-              <div className="text-3xl font-bold text-dark mb-2">87%</div>
-              <div className="text-xs text-blue-600 font-medium">↗ High member activity</div>
-            </div>
-            
-            <div className="rounded-2xl border-2 border-purple-200/60 bg-gradient-to-br from-purple-50 to-purple-25 p-6">
-              <div className="flex items-center gap-3 mb-3">
-                <svg className="h-6 w-6 text-purple-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-                </svg>
-                <div className="text-sm font-bold text-purple-700">Performance</div>
-              </div>
-              <div className="text-3xl font-bold text-dark mb-2">92%</div>
-              <div className="text-xs text-purple-600 font-medium">↗ Exceeding targets</div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   )

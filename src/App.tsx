@@ -10,7 +10,6 @@ import LeaderDashboard from './pages/LeaderDashboard'
 import NetworkView from './pages/NetworkView'
 import PendingApproval from './pages/PendingApproval'
 import AdminApprovalDashboard from './pages/AdminApprovalDashboard'
-import ReferralCodePage from './pages/ReferralCodePage'
 import { supabase } from './lib/supabase'
 
 type ApprovedRole = 'users' | 'leaders' | 'admin'
@@ -180,11 +179,6 @@ function DashboardGate({ requiredRole, children }: { requiredRole?: ApprovedRole
 }
 
 function RegisterEntry() {
-  const location = useLocation()
-  const params = new URLSearchParams(location.search)
-  const ref = params.get('ref')
-  const continueToRegister = params.get('continue')
-  if (ref && !continueToRegister) return <ReferralCodePage />
   return <Register />
 }
 
