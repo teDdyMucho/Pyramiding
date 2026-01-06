@@ -96,12 +96,12 @@ function AdminApprovalDashboard() {
       try {
         const { data: approvedUser, error: approvedUserError } = await supabase
           .from('users')
-          .select('id, first_name, last_name, phone_number, invite_code')
+          .select('id, first_name, last_name, phone_number, whoinvite')
           .eq('id', userId)
           .maybeSingle()
 
         if (!approvedUserError && approvedUser) {
-          const inviteCode = (approvedUser as any)?.invite_code as string | null | undefined
+          const inviteCode = (approvedUser as any)?.whoinvite as string | null | undefined
 
           let inviterPhoneNumber: string | null = null
           let inviterUserId: string | null = null
@@ -111,7 +111,7 @@ function AdminApprovalDashboard() {
               const { data: inviter, error: inviterError } = await supabase
                 .from('users')
                 .select('id, phone_number')
-                .eq('referral_code', inviteCode)
+                .eq('myreferralcode', inviteCode)
                 .maybeSingle()
               if (!inviterError) {
                 inviterPhoneNumber = (inviter as any)?.phone_number ?? null
@@ -130,7 +130,7 @@ function AdminApprovalDashboard() {
               last_name: (approvedUser as any)?.last_name,
               phone_number: (approvedUser as any)?.phone_number,
               user_id: (approvedUser as any)?.id,
-              invite_code: inviteCode ?? null,
+              whoinvite: inviteCode ?? null,
               inviter_phone_number: inviterPhoneNumber,
               inviter_user_id: inviterUserId,
               approved_role: role,

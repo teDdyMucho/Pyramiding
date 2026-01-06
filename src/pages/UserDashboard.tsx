@@ -46,11 +46,11 @@ function UserDashboard() {
       try {
         const { data, error } = await supabase
           .from('users')
-          .select('referral_code')
+          .select('myreferralcode')
           .eq('id', user.id)
           .maybeSingle()
         if (error) return
-        const code = (data as any)?.referral_code as string | null | undefined
+        const code = (data as any)?.myreferralcode as string | null | undefined
         if (code) setReferralCode(code)
       } catch {
         // ignore

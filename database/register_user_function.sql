@@ -14,7 +14,7 @@ RETURNS TABLE(
   last_name TEXT,
   phone_number TEXT,
   role TEXT,
-  referral_code TEXT
+  myreferralcode TEXT
 ) 
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -29,7 +29,7 @@ DECLARE
 BEGIN
   -- Validate invite code exists (if provided)
   IF p_invite_code IS NOT NULL AND p_invite_code != '' THEN
-    IF NOT EXISTS (SELECT 1 FROM users WHERE referral_code = p_invite_code) THEN
+    IF NOT EXISTS (SELECT 1 FROM users WHERE myreferralcode = p_invite_code) THEN
       RAISE EXCEPTION 'Invalid invite code';
     END IF;
     
@@ -67,7 +67,7 @@ BEGIN
     
     -- Check if this code already exists
     SELECT EXISTS (
-      SELECT 1 FROM users WHERE referral_code = v_referral_code
+      SELECT 1 FROM users WHERE myreferralcode = v_referral_code
     ) INTO v_exists;
     
     -- Exit loop if code is unique
@@ -86,8 +86,8 @@ BEGIN
     phone_number,
     password,
     role,
-    invite_code,
-    referral_code,
+    whoinvite,
+    myreferralcode,
     created_at
   ) VALUES (
     p_first_name,
@@ -128,7 +128,7 @@ BEGIN
     users.last_name,
     users.phone_number,
     users.role,
-    users.referral_code
+    users.myreferralcode
   FROM users
   WHERE users.id = v_user_id;
 END;

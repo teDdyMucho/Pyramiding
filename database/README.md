@@ -1,5 +1,11 @@
 # Database Setup Instructions
 
+## Database Column Names
+
+**Important**: The database uses the following column names:
+- `myreferralcode` - User's unique referral code (previously `referral_code`)
+- `whoinvite` - The referral code used to invite this user (previously `invite_code`)
+
 ## Unique Referral Code Generation
 
 The `register_user` function has been updated to ensure that every user gets a **unique referral code** during registration.
@@ -17,6 +23,7 @@ Run the following SQL in your Supabase SQL Editor:
 
 ```sql
 -- See register_user_function.sql for the complete function
+-- See verify_login_function.sql for the login function
 ```
 
 ### Key Features
@@ -29,15 +36,17 @@ Run the following SQL in your Supabase SQL Editor:
 ### Database Schema Requirements
 
 Ensure your `users` table has:
-- `referral_code` column with a **UNIQUE constraint**
-- Index on `referral_code` for fast lookups
+- `myreferralcode` column with a **UNIQUE constraint**
+- `whoinvite` column to track who invited the user
+- Index on `myreferralcode` for fast lookups
 
 ```sql
 -- Add unique constraint if not exists
-ALTER TABLE users ADD CONSTRAINT users_referral_code_key UNIQUE (referral_code);
+ALTER TABLE users ADD CONSTRAINT users_myreferralcode_key UNIQUE (myreferralcode);
 
 -- Add index for performance
-CREATE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code);
+CREATE INDEX IF NOT EXISTS idx_users_myreferralcode ON users(myreferralcode);
+CREATE INDEX IF NOT EXISTS idx_users_whoinvite ON users(whoinvite);
 ```
 
 ### Testing
@@ -46,9 +55,9 @@ To verify uniqueness:
 
 ```sql
 -- Check for duplicate referral codes
-SELECT referral_code, COUNT(*) 
+SELECT myreferralcode, COUNT(*) 
 FROM users 
-GROUP BY referral_code 
+GROUP BY myreferralcode 
 HAVING COUNT(*) > 1;
 ```
 
@@ -60,4 +69,4 @@ The function also creates an initial entry in the `points_ledger` table with:
 - User's ID
 - Initial points: 0
 - Initial goals: goal1=0, goal2=0, goal3=0
-- Referral code copied from the user record
+- Referral code copied from the user record (stored in `refferal` column)

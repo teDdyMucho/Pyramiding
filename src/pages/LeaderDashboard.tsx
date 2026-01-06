@@ -34,6 +34,7 @@ function LeaderDashboard() {
   }, [])
 
   const [totalPoints, setTotalPoints] = useState(0)
+  const [networkCounts, setNetworkCounts] = useState({ members: 0, totalNetwork: 0 })
 
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : ((import.meta.env?.VITE_PUBLIC_APP_URL as string | undefined) ?? '')
   const normalizedBaseUrl = baseUrl.replace(/\/$/, '')
@@ -46,11 +47,11 @@ function LeaderDashboard() {
       try {
         const { data, error } = await supabase
           .from('users')
-          .select('referral_code')
+          .select('myreferralcode')
           .eq('id', user.id)
           .maybeSingle()
         if (error) return
-        const code = (data as any)?.referral_code as string | null | undefined
+        const code = (data as any)?.myreferralcode as string | null | undefined
         if (code) setReferralCode(code)
       } catch {
         // ignore
@@ -59,6 +60,49 @@ function LeaderDashboard() {
 
     fetchReferral()
   }, [user?.id])
+
+  useEffect(() => {
+    const fetchNetworkCounts = async () => {
+      if (!user?.id || !referralCode) return
+      
+      try {
+        // Get direct team members (teamleader = my referral code)
+        const { data: directMembers, error: directError } = await supabase
+          .from('users')
+          .select('id, myreferralcode')
+          .eq('teamleader', referralCode)
+          .in('role', ['users', 'leaders'])
+        
+        if (directError) return
+        
+        const memberCount = (directMembers ?? []).length
+        
+        // Get all referral codes from direct members
+        const memberCodes = (directMembers ?? []).map((m: any) => m.myreferralcode).filter(Boolean)
+        
+        let totalNetworkCount = memberCount
+        
+        if (memberCodes.length > 0) {
+          // Get direct invites of all team members (whoinvite = member's code)
+          const { data: allInvites, error: invitesError } = await supabase
+            .from('users')
+            .select('id')
+            .in('whoinvite', memberCodes)
+            .in('role', ['users', 'leaders'])
+          
+          if (!invitesError) {
+            totalNetworkCount += (allInvites ?? []).length
+          }
+        }
+        
+        setNetworkCounts({ members: memberCount, totalNetwork: totalNetworkCount })
+      } catch {
+        // ignore
+      }
+    }
+    
+    fetchNetworkCounts()
+  }, [user?.id, referralCode])
 
   useEffect(() => {
     const fetchGoalCounts = async () => {
@@ -447,12 +491,12 @@ function LeaderDashboard() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="rounded-xl bg-white/80 p-4">
-                <div className="text-xs font-semibold text-medium mb-1">Total Members</div>
-                <div className="text-2xl font-bold text-dark">{goalCounts.level1}</div>
+                <div className="text-xs font-semibold text-medium mb-1">Total Member</div>
+                <div className="text-2xl font-bold text-dark">{networkCounts.members}</div>
               </div>
               <div className="rounded-xl bg-white/80 p-4">
-                <div className="text-xs font-semibold text-medium mb-1">Active Network</div>
-                <div className="text-2xl font-bold text-dark">{goalCounts.level2}</div>
+                <div className="text-xs font-semibold text-medium mb-1">Total Network</div>
+                <div className="text-2xl font-bold text-dark">{networkCounts.totalNetwork}</div>
               </div>
             </div>
           </div>

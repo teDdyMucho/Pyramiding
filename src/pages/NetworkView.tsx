@@ -56,35 +56,14 @@ function NetworkView() {
       try {
         const isApprovedRole = (r: any) => r === 'users' || r === 'leaders'
 
-        const toNumber = (v: unknown) => {
-          if (typeof v === 'number') return Number.isFinite(v) ? v : 0
-          if (typeof v === 'string') {
-            const n = Number(v)
-            return Number.isFinite(n) ? n : 0
-          }
-          return 0
-        }
-
-        const extractPoints = (row: any) => {
-          // Best-effort: supports common column names without breaking if schema differs
-          return (
-            toNumber(row?.points) ||
-            toNumber(row?.earned_points) ||
-            toNumber(row?.earnedPoints) ||
-            toNumber(row?.amount) ||
-            toNumber(row?.value) ||
-            0
-          )
-        }
-
         let currentReferralCode: string | null = null
         try {
           const { data: me, error: meError } = await supabase
             .from('users')
-            .select('referral_code')
+            .select('myreferralcode')
             .eq('id', user.id)
             .maybeSingle()
-          if (!meError) currentReferralCode = (me as any)?.referral_code ?? null
+          if (!meError) currentReferralCode = (me as any)?.myreferralcode ?? null
         } catch {
           // ignore
         }
@@ -94,115 +73,73 @@ function NetworkView() {
           return
         }
 
+        // Query users who have this leader's referral code in their teamleader column
         const { data: directUsers, error: directUsersError } = await supabase
           .from('users')
-          .select('id, first_name, last_name, phone_number, role, referral_code')
-          .eq('invite_code', currentReferralCode)
+          .select('id, first_name, last_name, phone_number, role, myreferralcode')
+          .eq('teamleader', currentReferralCode)
           .in('role', ['users', 'leaders'])
 
         if (directUsersError) throw directUsersError
 
         const directUserRows = (directUsers ?? []) as any[]
-        const directUserIds = directUserRows.map(u => u.id).filter(Boolean) as string[]
-        const directReferralCodes = directUserRows
-          .map(u => u.referral_code)
-          .filter(Boolean) as string[]
 
-        if (directUserIds.length === 0) {
+        if (directUserRows.length === 0) {
           setData([])
           return
         }
 
-        let secondUsersById = new Map<string, any>()
-        let childrenByInviterId = new Map<string, string[]>()
+        // Get all referral codes from direct team members
+        const directReferralCodes = directUserRows
+          .map(u => u.myreferralcode)
+          .filter(Boolean) as string[]
 
+        // Fetch direct invites for each team member (users who used their myreferralcode)
+        let invitesByMemberCode = new Map<string, any[]>()
         if (directReferralCodes.length > 0) {
-          const { data: secondUsers, error: secondUsersError } = await supabase
+          const { data: allInvites, error: invitesError } = await supabase
             .from('users')
-            .select('id, first_name, last_name, phone_number, role, invite_code')
-            .in('invite_code', directReferralCodes)
+            .select('id, first_name, last_name, phone_number, role, whoinvite')
+            .in('whoinvite', directReferralCodes)
             .in('role', ['users', 'leaders'])
 
-          if (secondUsersError) throw secondUsersError
-
-          ;(secondUsers ?? []).forEach((u: any) => {
-            if (u?.id) secondUsersById.set(u.id as string, u)
-          })
-
-          const directByReferral = new Map<string, string>()
-          directUserRows.forEach((u: any) => {
-            if (u?.referral_code && u?.id) directByReferral.set(u.referral_code as string, u.id as string)
-          })
-
-          ;(secondUsers ?? []).forEach((u: any) => {
-            const codeUsed = (u as any)?.invite_code as string | null | undefined
-            if (!codeUsed) return
-            const inviterId = directByReferral.get(codeUsed)
-            if (!inviterId) return
-            const next = childrenByInviterId.get(inviterId) ?? []
-            next.push((u as any).id as string)
-            childrenByInviterId.set(inviterId, next)
-          })
-        }
-
-        const directPointsByUserId = new Map<string, number>()
-        try {
-          // Best-effort points: depends on RLS; listing does NOT depend on this.
-          const { data: directLedger, error: directLedgerError } = await supabase
-            .from('points_ledger')
-            .select('*')
-            .eq('inviter_code_uuid', user.id)
-            .not('user_code_uuid', 'is', null)
-
-          if (!directLedgerError) {
-            ;(directLedger ?? []).forEach((r: any) => {
-              const referredUserId = (r as any)?.user_code_uuid as string | null | undefined
-              if (!referredUserId) return
-              const prev = directPointsByUserId.get(referredUserId) ?? 0
-              directPointsByUserId.set(referredUserId, prev + extractPoints(r))
+          if (!invitesError && allInvites) {
+            (allInvites as any[]).forEach((invite: any) => {
+              const code = invite.whoinvite
+              if (!code) return
+              const existing = invitesByMemberCode.get(code) ?? []
+              existing.push(invite)
+              invitesByMemberCode.set(code, existing)
             })
           }
-        } catch {
-          // ignore
         }
 
         const members: Member[] = directUserRows
           .filter((u: any) => isApprovedRole((u as any)?.role))
           .map((u: any) => {
-            const directUserId = (u as any).id as string
             const phone = (u as any).phone_number as string
-            const childrenIds = childrenByInviterId.get(directUserId) ?? []
-            const uniqueChildren = Array.from(new Set(childrenIds))
-
-            const connections: Member[] = uniqueChildren
-              .map((childId) => {
-                const childUser = secondUsersById.get(childId)
-                if (!childUser) {
-                  return {
-                    id: childId,
-                    name: childId,
-                    phone: childId,
-                    active: false,
-                  }
-                }
-                const name = `${(childUser as any).first_name} ${(childUser as any).last_name}`.trim()
-                return {
-                  id: (childUser as any).id ?? childId,
-                  name,
-                  phone: (childUser as any).phone_number,
-                  active: isApprovedRole((childUser as any).role),
-                }
-              })
-              .filter(Boolean)
-
             const name = `${(u as any).first_name} ${(u as any).last_name}`.trim()
+            const memberCode = (u as any).myreferralcode
+            
+            // Get this member's direct invites
+            const directInvites = invitesByMemberCode.get(memberCode) ?? []
+            const connections: Member[] = directInvites.map((invite: any) => {
+              const inviteName = `${invite.first_name} ${invite.last_name}`.trim()
+              return {
+                id: invite.id,
+                name: inviteName,
+                phone: invite.phone_number,
+                active: isApprovedRole(invite.role),
+              }
+            })
+
             return {
               id: (u as any).id ?? phone,
               name,
               phone,
-              connections: connections.length ? connections : undefined,
               active: isApprovedRole((u as any).role),
-              earnedPoints: directPointsByUserId.get(directUserId) ?? 0,
+              earnedPoints: 0,
+              connections: connections.length > 0 ? connections : undefined,
             }
           })
 
@@ -308,25 +245,15 @@ function NetworkView() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="rounded-2xl border-2 border-blue-200/60 bg-gradient-to-br from-blue-50 to-blue-25 p-4 text-center">
-                  <div className="text-sm font-bold text-blue-700 mb-1">Direct Connections</div>
+                  <div className="text-sm font-bold text-blue-700 mb-1">Member</div>
                   <div className="text-3xl font-bold text-dark">{isLoading ? '...' : data.length}</div>
                 </div>
                 <div className="rounded-2xl border-2 border-green-200/60 bg-gradient-to-br from-green-50 to-green-25 p-4 text-center">
                   <div className="text-sm font-bold text-green-700 mb-1">Total Network</div>
                   <div className="text-3xl font-bold text-dark">
                     {isLoading ? '...' : data.reduce((acc, m) => acc + (m.connections?.length || 0), data.length)}
-                  </div>
-                </div>
-                <div className="rounded-2xl border-2 border-purple-200/60 bg-gradient-to-br from-purple-50 to-purple-25 p-4 text-center">
-                  <div className="text-sm font-bold text-purple-700 mb-1">Active Rate</div>
-                  <div className="text-3xl font-bold text-dark">
-                    {isLoading
-                      ? '...'
-                      : data.length
-                        ? `${Math.round((data.filter(m => m.active).length / data.length) * 100)}%`
-                        : '0%'}
                   </div>
                 </div>
               </div>
