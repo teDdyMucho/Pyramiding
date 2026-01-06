@@ -24,9 +24,10 @@ type Member = {
 const maskPhone = (phone: string) => {
   const p = (phone ?? '').trim()
   if (!p) return ''
-  if (p.startsWith('09')) return `09${'x'.repeat(Math.max(0, p.length - 2))}`
-  if (p.startsWith('63')) return `63${'x'.repeat(Math.max(0, p.length - 2))}`
-  return `${p.slice(0, 2)}${'x'.repeat(Math.max(0, p.length - 2))}`
+  if (p.length <= 4) return p
+  const lastFour = p.slice(-4)
+  const maskedPart = 'x'.repeat(p.length - 4)
+  return `${maskedPart}${lastFour}`
 }
 
 function NetworkView() {

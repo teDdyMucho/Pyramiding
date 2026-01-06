@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { encryptRef } from '../utils/encryption'
 import { supabase } from '../lib/supabase'
 
@@ -403,6 +403,57 @@ function LeaderDashboard() {
                   Claimed
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+
+        {/* Network Tree Panel - Only for Leaders */}
+        <div className="rounded-3xl bg-white/90 backdrop-blur-xl border border-white/50 shadow-2xl p-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center shadow-lg">
+                <svg className="h-6 w-6 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <div>
+                <div className="text-xl font-bold text-dark">Network Tree</div>
+                <div className="text-sm text-medium font-medium">View your team structure and connections</div>
+              </div>
+            </div>
+            <Link
+              to="/network"
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-3 text-sm font-bold text-white hover:from-blue-600 hover:to-blue-700 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              View Network
+            </Link>
+          </div>
+          <div className="rounded-2xl border-2 border-blue-200/60 bg-gradient-to-br from-blue-50 to-blue-25 p-6">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="h-10 w-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                <svg className="h-5 w-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 6v6l4 2" />
+                </svg>
+              </div>
+              <div>
+                <div className="text-sm font-bold text-blue-700">Team Overview</div>
+                <div className="text-xs text-blue-600 font-medium">Track your network growth and member activity</div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-xl bg-white/80 p-4">
+                <div className="text-xs font-semibold text-medium mb-1">Total Members</div>
+                <div className="text-2xl font-bold text-dark">{goalCounts.level1}</div>
+              </div>
+              <div className="rounded-xl bg-white/80 p-4">
+                <div className="text-xs font-semibold text-medium mb-1">Active Network</div>
+                <div className="text-2xl font-bold text-dark">{goalCounts.level2}</div>
+              </div>
             </div>
           </div>
         </div>
