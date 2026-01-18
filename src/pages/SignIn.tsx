@@ -14,7 +14,7 @@ function SignIn() {
   const navigate = useNavigate()
 
   const [formData, setFormData] = useState({
-    identifier: '',
+    userId: '',
     password: '',
   })
 
@@ -42,8 +42,8 @@ function SignIn() {
     setIsSubmitting(true)
 
     try {
-      const { data, error } = await supabase.rpc('verify_login', {
-        p_phone_number: formData.identifier,
+      const { data, error } = await supabase.rpc('verify_login_by_userid', {
+        p_user_id: formData.userId,
         p_password: formData.password,
       })
 
@@ -91,17 +91,18 @@ function SignIn() {
             )}
 
             <div>
-              <label htmlFor="identifier" className="block text-sm font-semibold text-medium mb-2">
-                Phone number or email
+              <label htmlFor="userId" className="block text-sm font-semibold text-medium mb-2">
+                User ID
               </label>
               <input
-                id="identifier"
-                name="identifier"
+                id="userId"
+                name="userId"
                 type="text"
                 autoComplete="username"
                 required
-                value={formData.identifier}
+                value={formData.userId}
                 onChange={handleChange}
+                placeholder="Enter your User ID"
                 className="appearance-none block w-full px-4 py-3 border border-accent/30 rounded-xl placeholder-medium/50 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-200 bg-white/50"
               />
             </div>

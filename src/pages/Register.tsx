@@ -1,18 +1,27 @@
 ﻿import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
 
 function Register() {
   const location = useLocation()
   const confirmPasswordRef = useRef<HTMLInputElement | null>(null)
 
   const [formData, setFormData] = useState({
+    userId: '',
     firstName: '',
     lastName: '',
     phoneNumber: '',
     password: '',
     confirmPassword: '',
-    inviteCode: ''
+    inviteCode: '',
+    project: '',
+    amount: '',
+    yearToPay: ''
   })
+
+  const [projects, setProjects] = useState<Array<{project_cy: string, amount: string[], year_to_pay: string[]}>>([])  
+  const [availableAmounts, setAvailableAmounts] = useState<string[]>([])
+  const [availableYears, setAvailableYears] = useState<string[]>([])
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [passwordMismatch, setPasswordMismatch] = useState(false)
@@ -34,21 +43,83 @@ function Register() {
     })
   }, [location.search])
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.name === 'confirmPassword') {
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('Project')
+          .select('project_cy, amount, year_to_pay')
+        
+        if (error) {
+          console.error('Error fetching projects:', error)
+          return
+        }
+        
+        if (data && Array.isArray(data)) {
+          setProjects(data)
+          console.log('Projects loaded:', data)
+        }
+      } catch (err) {
+        console.error('Error fetching projects:', err)
+      }
+    }
+    fetchProjects()
+  }, [])
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target
+    
+    if (name === 'confirmPassword') {
       confirmPasswordRef.current?.setCustomValidity('')
       setPasswordMismatch(false)
     }
 
+    if (name === 'userId') {
+      const sanitized = value.replace(/[^a-zA-Z0-9]/g, '')
+      setFormData({
+        ...formData,
+        [name]: sanitized
+      })
+      return
+    }
+
+    if (name === 'project') {
+      const selectedProject = projects.find(p => p.project_cy === value)
+      if (selectedProject) {
+        setAvailableAmounts(selectedProject.amount)
+        setAvailableYears(selectedProject.year_to_pay)
+        setFormData({
+          ...formData,
+          project: value,
+          amount: '',
+          yearToPay: ''
+        })
+        return
+      }
+    }
+
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: value
     })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     console.log('Form submitted', formData)
+
+    // Validate User ID
+    if (!formData.userId.trim()) {
+      setErrorModalMessage('User ID is required.')
+      setShowErrorModal(true)
+      return
+    }
+
+    if (formData.userId.length < 6) {
+      setErrorModalMessage('User ID must be at least 6 characters.')
+      setShowErrorModal(true)
+      return
+    }
 
     // Validate phone number - must be at least 11 digits
     const phoneDigits = formData.phoneNumber.replace(/\D/g, '')
@@ -87,11 +158,15 @@ function Register() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          userId: formData.userId,
           firstName: formData.firstName,
           lastName: formData.lastName,
           phoneNumber: formData.phoneNumber,
           password: formData.password,
           inviteCode: formData.inviteCode,
+          project: formData.project,
+          amount: formData.amount,
+          yearToPay: formData.yearToPay,
         }),
       })
 
@@ -190,6 +265,23 @@ function Register() {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-lg">
         <div className="bg-white/80 backdrop-blur-sm py-12 px-8 shadow-2xl rounded-3xl border border-accent/20">
           <form className="space-y-8" onSubmit={handleSubmit}>
+            <div>
+              <label htmlFor="userId" className="block text-sm font-semibold text-medium mb-2">
+                User ID Login
+              </label>
+              <input
+                id="userId"
+                name="userId"
+                type="text"
+                required
+                minLength={6}
+                value={formData.userId}
+                onChange={handleChange}
+                placeholder="Letters and numbers only (min 6 characters)"
+                className="appearance-none block w-full px-4 py-3 border border-accent/30 rounded-xl placeholder-medium/50 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-200 bg-white/50"
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-6">
               <div>
                 <label htmlFor="firstName" className="block text-sm font-semibold text-medium mb-2">
@@ -337,6 +429,77 @@ function Register() {
                 placeholder="Enter invite code"
                 className="appearance-none block w-full px-4 py-3 border border-accent/30 rounded-xl placeholder-medium/50 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-200 bg-white/50"
               />
+            </div>
+
+            <div className="border-t border-accent/20 pt-6 mt-6">
+              <h3 className="text-lg font-bold text-dark mb-4">Project Information</h3>
+              
+              <div className="space-y-6">
+                <div>
+                  <label htmlFor="project" className="block text-sm font-semibold text-medium mb-2">
+                    Project
+                  </label>
+                  <select
+                    id="project"
+                    name="project"
+                    required
+                    value={formData.project}
+                    onChange={handleChange}
+                    className="appearance-none block w-full px-4 py-3 border border-accent/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-200 bg-white/50"
+                  >
+                    <option value="">Select a project</option>
+                    {projects.map((proj, idx) => (
+                      <option key={idx} value={proj.project_cy}>
+                        {proj.project_cy}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="amount" className="block text-sm font-semibold text-medium mb-2">
+                    Amount
+                  </label>
+                  <select
+                    id="amount"
+                    name="amount"
+                    required
+                    value={formData.amount}
+                    onChange={handleChange}
+                    disabled={!formData.project}
+                    className="appearance-none block w-full px-4 py-3 border border-accent/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-200 bg-white/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <option value="">Select amount</option>
+                    {availableAmounts.map((amt, idx) => (
+                      <option key={idx} value={amt}>
+                        ₱{parseInt(amt).toLocaleString()}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="yearToPay" className="block text-sm font-semibold text-medium mb-2">
+                    Year to pay
+                  </label>
+                  <select
+                    id="yearToPay"
+                    name="yearToPay"
+                    required
+                    value={formData.yearToPay}
+                    onChange={handleChange}
+                    disabled={!formData.project}
+                    className="appearance-none block w-full px-4 py-3 border border-accent/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-200 bg-white/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <option value="">Select payment period</option>
+                    {availableYears.map((year, idx) => (
+                      <option key={idx} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
 
             <div>
