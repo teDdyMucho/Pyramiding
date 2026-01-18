@@ -10,6 +10,8 @@ import LeaderDashboard from './pages/LeaderDashboard'
 import NetworkView from './pages/NetworkView'
 import PendingApproval from './pages/PendingApproval'
 import AdminApprovalDashboard from './pages/AdminApprovalDashboard'
+import AdminUserManagement from './pages/AdminUserManagement'
+import AdminSettings from './pages/AdminSettings'
 import { supabase } from './lib/supabase'
 
 type ApprovedRole = 'users' | 'leaders' | 'admin'
@@ -251,6 +253,24 @@ function AppLayout() {
             element={
               <AdminGate>
                 <AdminApprovalDashboard />
+              </AdminGate>
+            }
+          />
+
+          <Route
+            path="/admin/users"
+            element={
+              <AdminGate>
+                <AdminUserManagement />
+              </AdminGate>
+            }
+          />
+
+          <Route
+            path="/admin/settings"
+            element={
+              <AdminGate>
+                <AdminSettings />
               </AdminGate>
             }
           />
