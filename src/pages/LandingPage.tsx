@@ -18,23 +18,20 @@ function LandingPage() {
                 Enterprise Business Solutions
               </div>
               <h1 className="text-6xl md:text-8xl font-bold mb-8 leading-tight">
-                Own Property
-                <span className="block text-accent text-3xl md:text-4xl font-light mt-4 tracking-wide">
-                  Business Management Platform
-                </span>
+                Start Earning.
+                <span className="block mt-4">Start OWNING.</span>
               </h1>
             </div>
             <p className="text-xl md:text-2xl mb-16 text-light/90 max-w-4xl mx-auto leading-relaxed font-light">
-              Streamline your business operations with our comprehensive management platform. 
-              Connect teams, track performance, and scale your organization with intelligent tools designed for modern enterprises.
+              invest early and own you land
             </p>
             <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
               <Link 
-                to="/register" 
+                to="/login" 
                 className="group bg-accent text-dark px-12 py-6 rounded-2xl font-bold text-xl hover:bg-accent/90 transition-all duration-500 shadow-2xl hover:shadow-accent/25 transform hover:-translate-y-2 hover:scale-105"
               >
                 <span className="flex items-center">
-                  Start Free Trial
+                  Log In
                   <svg className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                   </svg>
