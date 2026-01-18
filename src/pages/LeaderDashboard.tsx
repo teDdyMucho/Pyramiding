@@ -17,10 +17,10 @@ function LeaderDashboard() {
   const navigate = useNavigate()
   const [copied, setCopied] = useState(false)
   const [referralCode, setReferralCode] = useState<string>('')
-  const goalTargets = { level1: 10, level2: 100, level3: 1000 }
-  const [goalCounts, setGoalCounts] = useState({ level1: 0, level2: 0, level3: 0 })
+  const goalTargets = { level1: 10, level2: 100 }
+  const [goalCounts, setGoalCounts] = useState({ level1: 0, level2: 0 })
   const [goalCountsError, setGoalCountsError] = useState<string | null>(null)
-  const [claimedGoals, setClaimedGoals] = useState({ level1: false, level2: false, level3: false })
+  const [claimedGoals, setClaimedGoals] = useState({ level1: false, level2: false })
   const [showCongrats, setShowCongrats] = useState<{ show: boolean; level: string; goalName: string }>({ show: false, level: '', goalName: '' })
 
   const user = useMemo(() => {
@@ -34,6 +34,8 @@ function LeaderDashboard() {
   }, [])
 
   const [totalPoints, setTotalPoints] = useState(0)
+  const [cashWithdrawable, setCashWithdrawable] = useState(0)
+  const [investment, setInvestment] = useState(0)
   const [networkCounts, setNetworkCounts] = useState({ members: 0, totalNetwork: 0 })
 
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : ((import.meta.env?.VITE_PUBLIC_APP_URL as string | undefined) ?? '')
@@ -113,14 +115,14 @@ function LeaderDashboard() {
 
         const { data, error } = await supabase
           .from('points_ledger')
-          .select('goal1, goal2, goal3')
+          .select('goal1, goal2')
           .eq('id', user.id)
           .maybeSingle()
 
         if (error) {
           const msg = (error.message ?? '').toLowerCase()
-          if (msg.includes('column') && (msg.includes('goal1') || msg.includes('goal2') || msg.includes('goal3'))) {
-            setGoalCountsError('Database columns goal1/goal2/goal3 not found. Please add them to points_ledger table.')
+          if (msg.includes('column') && (msg.includes('goal1') || msg.includes('goal2'))) {
+            setGoalCountsError('Database columns goal1/goal2 not found. Please add them to points_ledger table.')
           } else {
             setGoalCountsError(error.message)
           }
@@ -130,8 +132,7 @@ function LeaderDashboard() {
         if (data) {
           setGoalCounts({
             level1: Number(data?.goal1 ?? 0),
-            level2: Number(data?.goal2 ?? 0),
-            level3: Number(data?.goal3 ?? 0)
+            level2: Number(data?.goal2 ?? 0)
           })
         }
       } catch (err) {
@@ -143,25 +144,27 @@ function LeaderDashboard() {
   }, [user?.id])
 
   useEffect(() => {
-    const fetchTotalPoints = async () => {
+    const fetchFinancialData = async () => {
       if (!user?.id) return
 
       try {
         const { data, error } = await supabase
           .from('points_ledger')
-          .select('points')
+          .select('points, withdrawable, projectpayment')
           .eq('id', user.id)
           .maybeSingle()
 
         if (!error && data) {
           setTotalPoints(Number(data?.points ?? 0))
+          setCashWithdrawable(Number(data?.withdrawable ?? 0))
+          setInvestment(Number(data?.projectpayment ?? 0))
         }
       } catch {
         // ignore
       }
     }
 
-    fetchTotalPoints()
+    fetchFinancialData()
   }, [user?.id])
 
   const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n))
@@ -187,7 +190,7 @@ function LeaderDashboard() {
     navigate('/signin', { replace: true })
   }
 
-  const handleClaimGoal = (level: 'level1' | 'level2' | 'level3', goalName: string) => {
+  const handleClaimGoal = (level: 'level1' | 'level2', goalName: string) => {
     setClaimedGoals(prev => ({ ...prev, [level]: true }))
     setShowCongrats({ show: true, level, goalName })
     setTimeout(() => {
@@ -195,7 +198,7 @@ function LeaderDashboard() {
     }, 4000)
   }
 
-  const isGoalComplete = (level: 'level1' | 'level2' | 'level3') => {
+  const isGoalComplete = (level: 'level1' | 'level2') => {
     const progress = progressForTarget(goalCounts[level], goalTargets[level])
     return progress.percent === 100
   }
@@ -247,7 +250,7 @@ function LeaderDashboard() {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
           <div className="group rounded-3xl bg-white/90 backdrop-blur-xl border border-white/50 shadow-2xl p-6 hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-1">
             <div className="flex items-center gap-4">
               <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-amber-100 to-amber-50 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
@@ -256,12 +259,42 @@ function LeaderDashboard() {
                 </svg>
               </div>
               <div className="flex-1">
-                <div className="text-sm font-bold text-medium mb-1">Total Points</div>
+                <div className="text-sm font-bold text-medium mb-1">Points</div>
                 <div className="text-3xl font-bold text-dark">{totalPoints}</div>
               </div>
             </div>
           </div>
-          
+
+          <div className="group rounded-3xl bg-white/90 backdrop-blur-xl border border-white/50 shadow-2xl p-6 hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-1">
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-green-100 to-green-50 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                <svg className="h-7 w-7 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <div className="text-sm font-bold text-medium mb-1">Cash</div>
+                <div className="text-3xl font-bold text-dark">₱{cashWithdrawable.toLocaleString()}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="group rounded-3xl bg-white/90 backdrop-blur-xl border border-white/50 shadow-2xl p-6 hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-1">
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                <svg className="h-7 w-7 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <div className="text-sm font-bold text-medium mb-1">Investment</div>
+                <div className="text-3xl font-bold text-dark">₱{investment.toLocaleString()}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-6 mb-10">
           <div className="group rounded-3xl bg-white/90 backdrop-blur-xl border border-white/50 shadow-2xl p-6 hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-1">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-4 flex-1">
@@ -339,6 +372,12 @@ function LeaderDashboard() {
                     </div>
                     <div className="text-xs font-semibold text-medium">registrations</div>
                   </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className="text-xs font-bold text-medium">Earnings</div>
+                    <div className="rounded-xl border-2 border-green-200 bg-white/80 px-3 py-2 text-sm font-bold text-green-600">
+                      ₱{(goalCounts.level1 * 200).toLocaleString()}
+                    </div>
+                  </div>
                 </div>
                 <div className="text-right">
                   <div className="text-xs font-bold text-medium">Progress</div>
@@ -380,6 +419,12 @@ function LeaderDashboard() {
                     </div>
                     <div className="text-xs font-semibold text-medium">registrations</div>
                   </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className="text-xs font-bold text-medium">Earnings</div>
+                    <div className="rounded-xl border-2 border-blue-200 bg-white/80 px-3 py-2 text-sm font-bold text-blue-600">
+                      ₱{(goalCounts.level2 * 200).toLocaleString()}
+                    </div>
+                  </div>
                 </div>
                 <div className="text-right">
                   <div className="text-xs font-bold text-medium">Progress</div>
@@ -400,47 +445,6 @@ function LeaderDashboard() {
               )}
               {claimedGoals.level2 && (
                 <div className="mt-4 flex items-center justify-center gap-2 text-blue-600 font-semibold text-sm">
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Claimed
-                </div>
-              )}
-            </div>
-
-            <div className="mx-auto w-full max-w-4xl rounded-2xl border-2 border-purple-200/60 bg-gradient-to-r from-purple-50 to-white p-5 shadow-sm">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-xs font-bold text-purple-700">Level 3</div>
-                  <div className="text-base font-bold text-dark">Leadership Goal</div>
-                  <div className="text-xs text-medium font-medium mt-1">Complete the top milestone</div>
-                  <div className="mt-3 flex items-center gap-2">
-                    <div className="text-xs font-bold text-medium">Target</div>
-                    <div className="w-24 rounded-xl border-2 border-purple-200 bg-white/80 px-3 py-2 text-sm font-bold text-dark">
-                      {goalTargets.level3}
-                    </div>
-                    <div className="text-xs font-semibold text-medium">registrations</div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-xs font-bold text-medium">Progress</div>
-                  <div className="text-lg font-bold text-dark">{progressForTarget(goalCounts.level3, goalTargets.level3).percent}%</div>
-                  <div className="text-xs font-semibold text-medium mt-1">{progressForTarget(goalCounts.level3, goalTargets.level3).current} / {goalTargets.level3}</div>
-                </div>
-              </div>
-              <div className="mt-4 h-2 rounded-full bg-purple-100 overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-purple-500 to-purple-600 rounded-full" style={{ width: `${progressForTarget(goalCounts.level3, goalTargets.level3).percent}%` }}></div>
-              </div>
-              {isGoalComplete('level3') && !claimedGoals.level3 && (
-                <button
-                  onClick={() => handleClaimGoal('level3', 'Leadership Goal')}
-                  className="mt-4 w-full rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 px-4 py-3 text-sm font-bold text-white hover:from-purple-600 hover:to-purple-700 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg"
-                >
-                  Claim Reward
-                </button>
-              )}
-              {claimedGoals.level3 && (
-                <div className="mt-4 flex items-center justify-center gap-2 text-purple-600 font-semibold text-sm">
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
