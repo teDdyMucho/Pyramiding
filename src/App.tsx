@@ -12,6 +12,9 @@ import PendingApproval from './pages/PendingApproval'
 import AdminApprovalDashboard from './pages/AdminApprovalDashboard'
 import AdminUserManagement from './pages/AdminUserManagement'
 import AdminSettings from './pages/AdminSettings'
+import PointsShop from './pages/PointsShop'
+import CashWithdrawal from './pages/CashWithdrawal'
+import Investment from './pages/Investment'
 import { supabase } from './lib/supabase'
 
 type ApprovedRole = 'users' | 'leaders' | 'admin'
@@ -82,6 +85,10 @@ function RoleSync() {
       }
 
       if (path.startsWith('/network')) {
+        return
+      }
+
+      if (path.startsWith('/shop') || path.startsWith('/withdrawal') || path.startsWith('/investment')) {
         return
       }
 
@@ -289,6 +296,33 @@ function AppLayout() {
             element={
               <DashboardGate>
                 <NetworkView />
+              </DashboardGate>
+            }
+          />
+
+          <Route
+            path="/shop"
+            element={
+              <DashboardGate>
+                <PointsShop />
+              </DashboardGate>
+            }
+          />
+
+          <Route
+            path="/withdrawal"
+            element={
+              <DashboardGate>
+                <CashWithdrawal />
+              </DashboardGate>
+            }
+          />
+
+          <Route
+            path="/investment"
+            element={
+              <DashboardGate>
+                <Investment />
               </DashboardGate>
             }
           />
