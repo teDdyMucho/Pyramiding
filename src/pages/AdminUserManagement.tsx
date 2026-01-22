@@ -119,9 +119,9 @@ function AdminUserManagement() {
       <AdminSidebar />
       
       <div className="flex-1">
-        <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-10 pt-20 lg:pt-10">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">
             <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center shadow-lg">
               <svg className="h-7 w-7 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -136,7 +136,7 @@ function AdminUserManagement() {
           <button
             type="button"
             onClick={handleSignOut}
-            className="inline-flex items-center rounded-2xl border-2 border-accent/30 bg-white/80 backdrop-blur-sm px-6 py-3 text-sm font-bold text-dark hover:bg-accent/5 transition-all"
+            className="inline-flex items-center justify-center rounded-2xl border-2 border-accent/30 bg-white/80 backdrop-blur-sm px-6 py-3 text-sm font-bold text-dark hover:bg-accent/5 transition-all w-full lg:w-auto"
           >
             Sign out
           </button>
@@ -221,8 +221,8 @@ function AdminUserManagement() {
 
         {/* Users Table */}
         <div className="rounded-3xl bg-white/90 backdrop-blur-xl border border-white/50 shadow-xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0">
+            <table className="w-full min-w-[800px]">
               <thead className="bg-gradient-to-r from-dark to-medium text-light">
                 <tr>
                   <th className="px-4 py-4 text-left text-xs font-bold uppercase">First Name</th>

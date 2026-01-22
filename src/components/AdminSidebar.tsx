@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
 function AdminSidebar() {
   const location = useLocation()
+  const [isOpen, setIsOpen] = useState(false)
 
   const navItems = [
     {
@@ -35,7 +37,36 @@ function AdminSidebar() {
   ]
 
   return (
-    <div className="w-64 bg-white/90 backdrop-blur-xl border-r border-accent/20 shadow-xl min-h-screen sticky top-0">
+    <>
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="lg:hidden fixed top-4 left-4 z-50 h-12 w-12 rounded-xl bg-white/90 backdrop-blur-xl border-2 border-accent/20 shadow-lg flex items-center justify-center hover:bg-accent/10 transition-all"
+      >
+        <svg className="h-6 w-6 text-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          {isOpen ? (
+            <path d="M6 18L18 6M6 6l12 12" />
+          ) : (
+            <path d="M4 6h16M4 12h16M4 18h16" />
+          )}
+        </svg>
+      </button>
+
+      {/* Overlay for mobile */}
+      {isOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-dark/50 backdrop-blur-sm z-40"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div className={`
+        fixed lg:sticky top-0 left-0 z-40 lg:z-0
+        w-64 bg-white/90 backdrop-blur-xl border-r border-accent/20 shadow-xl min-h-screen
+        transition-transform duration-300 ease-in-out
+        ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
       <div className="p-6">
         <div className="flex items-center gap-3 mb-8">
           <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-dark to-medium flex items-center justify-center shadow-lg">
@@ -79,6 +110,7 @@ function AdminSidebar() {
         </div>
       </div>
     </div>
+    </>
   )
 }
 

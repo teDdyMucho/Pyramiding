@@ -73,11 +73,11 @@ function NetworkView() {
           return
         }
 
-        // Query users who have this leader's referral code in their teamleader column
+        // Query users who have this user's referral code in their whoinvite column (direct invites)
         const { data: directUsers, error: directUsersError } = await supabase
           .from('users')
           .select('id, first_name, last_name, phone_number, role, myreferralcode')
-          .eq('teamleader', currentReferralCode)
+          .eq('whoinvite', currentReferralCode)
           .in('role', ['users', 'leaders'])
 
         if (directUsersError) throw directUsersError

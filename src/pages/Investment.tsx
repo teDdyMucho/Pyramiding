@@ -78,7 +78,7 @@ function Investment() {
     <div className="min-h-screen bg-gradient-to-br from-light via-white to-accent/5">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">
             <Link to="/dashboard" className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
               <svg className="h-6 w-6 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -86,14 +86,14 @@ function Investment() {
               </svg>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold text-dark">Investment Opportunities</h1>
-              <p className="text-medium font-medium">Resort properties & insurance in the Philippines</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-dark">Investment Opportunities</h1>
+              <p className="text-sm sm:text-base text-medium font-medium">Resort properties & insurance in the Philippines</p>
             </div>
           </div>
           <button
             type="button"
             onClick={handleSignOut}
-            className="inline-flex items-center rounded-2xl border-2 border-accent/30 bg-white/80 backdrop-blur-sm px-6 py-3 text-sm font-bold text-dark hover:bg-accent/5 transition-all"
+            className="inline-flex items-center justify-center rounded-2xl border-2 border-accent/30 bg-white/80 backdrop-blur-sm px-6 py-3 text-sm font-bold text-dark hover:bg-accent/5 transition-all w-full sm:w-auto"
           >
             Sign out
           </button>
